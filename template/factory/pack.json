@@ -52,6 +52,16 @@
     "status": [
       "--json"
     ],
+    "runs": [
+      "--json",
+      "--all"
+    ],
+    "wait": [
+      "--json"
+    ],
+    "abandon": [
+      "--json"
+    ],
     "approve": [
       "--comment"
     ],

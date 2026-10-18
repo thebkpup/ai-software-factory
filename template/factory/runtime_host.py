@@ -128,7 +128,9 @@ class Environments:
                 self.bindings[name] = True
             self.roots[name] = path
         self.stopping = stopping
-        self.base = Path(tempfile.mkdtemp(prefix="factory-runtime-"))
+        # Resolved once: a symlinked temp base (macOS keeps TMPDIR under /var) must not
+        # make every resolved snapshot path read as escaping its root.
+        self.base = Path(tempfile.mkdtemp(prefix="factory-runtime-")).resolve()
         self.active = {}
         # port -> monotonic allocation time. Freed ports become reusable after a cooldown,
         # so a long-lived owner does not exhaust the pool; a just-torn-down port stays

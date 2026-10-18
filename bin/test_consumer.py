@@ -35,7 +35,7 @@ source = Path(__file__).resolve().parents[3]
 with open(os.environ["FACTORY_TEST_TRACE"], "a", encoding="utf-8") as f:
     f.write(json.dumps(args) + "\n")
 if "--help" in args:
-    print("workflow " + args[1] + " --workflow-source --input --adopt --detach --json --events --comment --reason")
+    print("workflow " + args[1] + " --workflow-source --input --adopt --detach --json --events --comment --reason --all")
     raise SystemExit(0)
 if args[:2] == ["workflow", "list"]:
     names = [p.stem for p in (source / ".archon/workflows/sdlc").rglob("*.yaml")]
@@ -550,6 +550,9 @@ class ConsumerTests(Fixture):
 
     def test_native_controls_keep_args_and_exit(self):
         for action, args in [("get", ["run-123", "--events"]), ("status", ["--all"]),
+                             ("runs", ["--open", "--status", "completed"]),
+                             ("wait", ["run-123", "--timeout", "1"]),
+                             ("abandon", ["run-123"]),
                              ("approve", ["run-123", "--comment", "accepted scope"]),
                              ("reject", ["run-123", "--reason", "changed head"]),
                              ("respond", ["run-123", "revise", "keep this text"]),
@@ -605,6 +608,10 @@ class ConsumerTests(Fixture):
         self.assertNotEqual(self.command("run", "archon-ship").returncode, 0)
         self.assertEqual(self.command("status", "--json").returncode, 0)
         self.assertEqual(self.command("cancel", "run-123").returncode, 0)
+        # Observation and release stay available under the brake, like cancel.
+        self.assertEqual(self.command("runs", "--json").returncode, 0)
+        self.assertEqual(self.command("wait", "run-123").returncode, 0)
+        self.assertEqual(self.command("abandon", "run-123").returncode, 0)
         self.assertEqual(self.command("unhalt").returncode, 0)
         self.assertFalse(any(row[:2] == ["workflow", "run"] for row in self.calls()))
 

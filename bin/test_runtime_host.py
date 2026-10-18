@@ -8,12 +8,15 @@ import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
+from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "template/factory"))
+import runtime_host
 from runtime_host import RuntimeHost, request, source_files, digest, command
 
 TARGET = r'''
@@ -134,6 +137,30 @@ class RuntimeTests(unittest.TestCase):
             pids = self.pids(mutated)
         self.assert_clean(mutated, pids)
         self.assertEqual(private.read_text(), "PRIVATE_EVALUATOR_SENTINEL")
+
+    def test_a_symlinked_temp_base_still_snapshots_and_starts(self):
+        # Issue #4: macOS keeps the temp base under /var, a symlink to /private/var,
+        # and safe_path compares resolved children against the root it was given, so an
+        # unresolved base made every snapshot read as escaping it.
+        real = self.base / "real-tmp"
+        real.mkdir()
+        link = self.base / "link-tmp"
+        try:
+            link.symlink_to(real, target_is_directory=True)
+        except OSError:
+            self.skipTest("creating a directory symlink needs privileges")
+        unresolved = Path(tempfile.mkdtemp(dir=str(link)))
+        self.config.write_text(json.dumps(self.cfg))
+        with patch.object(runtime_host.tempfile, "mkdtemp", return_value=unresolved):
+            environments = runtime_host.Environments(
+                json.loads(self.config.read_text(encoding="utf-8")), threading.Event())
+            item = environments.start({"slot": "case", "root": "candidate"})
+            try:
+                self.assertEqual(self.get(item, "/health"), "healthy baseline")
+                self.assertEqual(environments.identity("case")["candidate"], item["candidate"])
+            finally:
+                environments.close()
+        self.assertFalse(Path(item["snapshot"]).parent.exists())
 
     def test_wrong_identity_and_dead_owned_target_refused(self):
         with self.host() as host:

@@ -285,6 +285,9 @@ python factory/consumer.py get <run-id> --json --events
 python factory/consumer.py status --all --json
 python factory/consumer.py approve <run-id> --comment "Approved"
 python factory/consumer.py cancel <run-id>
+python factory/consumer.py runs --status completed --json
+python factory/consumer.py wait <run-id> --json
+python factory/consumer.py abandon <run-id>
 python factory/consumer.py halt
 ```
 
@@ -293,6 +296,22 @@ python factory/consumer.py halt
 `pause` only stops the timer from starting laps: it keeps waking runs that wait on CI,
 and explicit `run` commands still launch. `unpause` resumes scheduled launches. Use it
 instead of disabling the host timer, which would leave an in-flight lap paused forever.
+
+`wait <run-id>` blocks the foreground until the run ends or needs a human decision
+(`--timeout <seconds>`, exit 3 on deadline). `abandon <run-id>` marks a run the host
+lost as cancelled — it records state, it does not stop host work: verify the owner
+(process and checkout) first, which is also the pinned cancel flow's advice.
+
+**When laps find nothing.** `factory status` lists active runs only, so an empty
+status is not proof that every issue was delivered. Terminal history is
+`factory runs --status completed --json`, one run is `factory get <run-id> --json`,
+and `factory runs --open --json` is failed runs awaiting adoption — a completed hold
+does not appear there. Until the lifecycle records a delivery result, a completed
+outcome is unknown, not merged. Repeating the timer changes nothing by itself: it does
+not clear state labels, restart completed runs, or revisit blocked work. Inspect the
+held run and the PR's current head and evidence, then run a new authorized
+`archon-verify-runtime` for missing evidence or `archon-deliver --adopt <run id>` for
+actual code repair, and re-qualify review against the current head before merging.
 
 After the first successful lap, ask your agent to configure
 `.factory/schedule.json` with a shared workflow and its inputs, then:

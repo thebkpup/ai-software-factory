@@ -281,8 +281,8 @@ def invoke(root: Path, action: str, args: list[str]) -> int:
             raise ValueError("--runtime-host requires a configuration path")
     if action == "schedule":
         return schedule(root, args)
-    if action not in {"run", "list", "get", "status", "runs", "abandon", "approve", "reject", "respond",
-                      "cancel", "resume", "doctor", "halt", "unhalt", "pause", "unpause"}:
+    if action not in {"run", "list", "get", "status", "runs", "abandon", "wait", "approve", "reject",
+                      "respond", "cancel", "resume", "doctor", "halt", "unhalt", "pause", "unpause"}:
         raise ValueError(f"Unknown command '{action}'. Run factory --help for the commands.")
     stop = shared_root(root) / ".factory/STOP"
     if action in {"halt", "unhalt"}:
@@ -896,7 +896,7 @@ def main(argv: list[str] | None = None) -> int:
               "Runtime host: fresh ordinary apps; detach/resume unsupported. Manual: python factory/runtime_host.py serve --help\n"
               "factory schedule install [--interval <seconds>] [--apply] | fire | remove [--apply] | status\n"
               "factory list | doctor | status | runs | get <run-id>\n"
-              "factory approve | reject | respond | cancel | resume | abandon <run-id>\n"
+              "factory approve | reject | respond | cancel | resume | abandon | wait <run-id>\n"
               "factory halt | unhalt (local launch brake only)\n"
               "factory pause | unpause (stop scheduled launches; the timer keeps waking active runs)")
         return 0
