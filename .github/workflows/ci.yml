@@ -45,12 +45,8 @@ jobs:
 
   pin-conformance:
     # Validate that the pinned Archon revision in pack.json still satisfies every
-    # contract this consumer assumes. Skipped everywhere by default; here it runs.
-    # Informational for now: the bundled SourceConformanceTests predates the current
-    # pin's layout (it loads triage/scripts/validate-contract.py, which pin 9155ff15
-    # no longer ships), so it is expected to be red until that test is realigned.
-    # A red marker here is the signal that pin and test have drifted apart again.
-    continue-on-error: true
+    # contract this consumer assumes. Skipped everywhere by default; here it runs
+    # against a real clone of the pin (bun-installed), so pin/test drift is caught.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

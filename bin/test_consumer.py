@@ -915,18 +915,30 @@ class SourceConformanceTests(unittest.TestCase):
         mappings = [json.loads(defaults[name]["state_labels"]) for name in workflows]
         self.assertTrue(all(mapping == mappings[0] for mapping in mappings))
 
-        triage = load("pinned_validate_contract", source / consumer.MANIFEST["source_directory"] /
-                       "triage/scripts/validate-contract.py")
+        # Lifecycle intake consumes the mapping in Python: the same five states, folded
+        # label names, and completeness only when every state is mapped.
         lifecycle = load("pinned_select_target", source / consumer.MANIFEST["source_directory"] /
-                          "lifecycle/scripts/select-target.py")
-        self.assertEqual(set(mappings[0]), set(triage.STATE_LABEL_METADATA))
+                         "lifecycle/scripts/select-target.py")
         self.assertEqual(set(mappings[0]), lifecycle.STATES)
         for mapping in mappings:
-            self.assertEqual(triage.parse_state_labels(json.dumps(mapping)), mapping)
             with patch.dict(os.environ, {"INPUTS_STATE_LABELS": json.dumps(mapping)}):
-                labels, complete = lifecycle.state_labels()
+                labels, blocked, complete = lifecycle.state_labels()
             self.assertTrue(complete)
             self.assertEqual(labels, {label.casefold() for label in mapping.values()})
+            self.assertEqual(blocked, mapping["BLOCKED"].casefold())
+
+        # Triage's label contract moved from validate-contract.py into TypeScript:
+        # verdict.ts must still know the five states, consume INPUTS_STATE_LABELS, and
+        # ship builtin labels identical to the factory default, so a caller that maps
+        # nothing keeps the same board vocabulary the factory configures.
+        verdict = (source / consumer.MANIFEST["source_directory"] /
+                   "triage/scripts/verdict.ts").read_text(encoding="utf-8")
+        self.assertRegex(verdict, r"function parseStateLabels\(")
+        self.assertIn("INPUTS_STATE_LABELS", verdict)
+        for state in sorted(lifecycle.STATES):
+            self.assertIn(f"'{state}'", verdict)
+        for label in mappings[0].values():
+            self.assertIn(f"'{label}'", verdict)
 
         directory = source / consumer.MANIFEST["source_directory"]
         for name, folder in (("archon-triage", "triage"), ("archon-ship", "ship"),
